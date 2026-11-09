@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  hadoop:
+    build:
+      context: .
+      dockerfile: hadoop/Dockerfile
+    container_name: hadoop_service
+    volumes:
+      - ./ventas_${MATRICULA:-125052284}.csv:/data/input/dataset.csv:ro
+      - ./mapreduce:/app/mapreduce
+      - ./scripts:/app/scripts
+    networks:
+      - datamart-net
+
+  db:
+    image: postgres:15-alpine
+    container_name: db_service
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-datamart}
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secretpass}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - datamart-net
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: api_service
+    ports:
+      - "8000:8000"
+    environment:
+      DB_HOST: db
+      DB_NAME: ${POSTGRES_DB:-datamart}
+      DB_USER: ${POSTGRES_USER:-admin}
+      DB_PASS: ${POSTGRES_PASSWORD:-secretpass}
+    depends_on:
+      - db
+    networks:
+      - datamart-net
+
+volumes:
+  postgres_data:
+
+networks:
+  datamart-net:
+    driver: bridge
